@@ -1,5 +1,10 @@
 package sfproj.client;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
@@ -24,6 +29,10 @@ import javafx.stage.Stage;
 
 public class ManageDepartments {
 
+	ClientNetHandler cnh;
+	private final String serverIPA = "localhost";
+	private final int port = 5000;
+	
 	private ObservableList<Department> departmentData = FXCollections.observableArrayList();
 	
 	@FXML Button addDept;
@@ -31,13 +40,26 @@ public class ManageDepartments {
 	@FXML Label deptLabel;
 	@FXML TableColumn<Department, String> nameCol;
 	@FXML TableColumn<Department, String> empCol;
+	@FXML TableColumn<Department, String> typeCol;
 	@FXML
     private void initialize() {
+		try {
+			cnh = new ClientNetHandler(serverIPA, port);
+			//cnh.sendToServer("RequestDepartment");
+			BufferedReader reader = new BufferedReader(new FileReader(new File("src/sfproj/client/dataSet/departmentList.txt")));
+			String line;
+			while((line = reader.readLine()) != null){
+				String[] deptLines = ((String) line).split("\\|");
+				departmentData.add(new Department(deptLines[1], deptLines[2], deptLines[3]));
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			//In this catch block just read from the departmentList.txt file. It should still have data
+			e.printStackTrace();
+		}
 		nameCol.setCellValueFactory(new PropertyValueFactory<Department, String>("DepartmentName"));
 		empCol.setCellValueFactory(new PropertyValueFactory<Department, String>("EmployeeNum"));
-		departmentData.add(new Department("Department 1", "15"));
-		departmentData.add(new Department("Department 2", "7"));
-		departmentData.add(new Department("Department 3", "45"));
+		typeCol.setCellValueFactory(new PropertyValueFactory<Department, String>("Type"));
 		deptList.setItems(departmentData);
 	}
 	
