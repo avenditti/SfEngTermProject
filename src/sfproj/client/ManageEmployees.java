@@ -5,8 +5,16 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.text.DateFormat;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.sql.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -36,6 +44,7 @@ public class ManageEmployees {
 	
 	@FXML Button addEmp;
 	@FXML Button manageTimes;
+	@FXML Button retireBtn;
 	@FXML TableView<Employee> empList;
 	@FXML Label empLbl;
 	@FXML TableColumn<Employee, String> empId;
@@ -48,10 +57,66 @@ public class ManageEmployees {
     private void initialize() {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(new File("src/sfproj/client/dataSet/employeeList.txt")));
-			String line;
+			String line, lineAgain, lineAgainAgain, lineAgainAgainAgain, rankName = "", deptName = "";//Again Again Again Again Again Again Again Again
+			Double totalPay = 0.00, totalHours = 0.00;
+			Date mondayD, sundayD, clock;
+			DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+			DecimalFormat dcf = new DecimalFormat("0.00");
+			Calendar monday = GregorianCalendar.getInstance(Locale.US);
+			Calendar sunday = GregorianCalendar.getInstance(Locale.US);
+			boolean overtime = false;
+			monday.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+			sunday.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+			sunday.add(Calendar.DATE, 6);
+			mondayD = Date.valueOf(df.format(monday.getTime()).toString());
+			sundayD = Date.valueOf(df.format(sunday.getTime()).toString());
 			while((line = reader.readLine()) != null){
 				String[] empLines = ((String) line).split("\\|");
-				employeeData.add(new Employee(empLines[0], empLines[1], empLines[2], "Employee", empLines[3], "100"));
+				BufferedReader readerAgain = new BufferedReader(new FileReader(new File("src/sfproj/client/dataSet/departmentList.txt")));
+				while((lineAgain = readerAgain.readLine()) != null){
+					String[] deptLines = ((String) lineAgain).split("\\|");
+					if(deptLines[0].equals(empLines[2])){
+						deptName = deptLines[1];
+					}
+				}
+				BufferedReader readerAgainAgain = new BufferedReader(new FileReader(new File("src/sfproj/client/dataSet/rankList.txt")));
+				while((lineAgainAgain = readerAgainAgain.readLine()) != null){
+					String[] rankLines = ((String) lineAgainAgain).split("\\|");
+					if(rankLines[0].equals(empLines[4])){
+						rankName = rankLines[1];
+					}
+				}
+				BufferedReader readerAgainAgainAgain = new BufferedReader(new FileReader(new File("src/sfproj/client/dataSet/fullTimeList.txt")));
+				while((lineAgainAgainAgain = readerAgainAgainAgain.readLine()) != null){
+					String[] payLines = ((String) lineAgainAgainAgain).split("\\|");
+					if(payLines[0].equals(empLines[0])){
+						clock = Date.valueOf(payLines[3]);
+						if(!mondayD.after(clock) && !sundayD.before(clock)){
+							if(overtime){
+								double pay = Double.parseDouble(payLines[5])/Double.parseDouble(payLines[4])/2;
+								totalPay = totalPay + pay*Double.parseDouble(payLines[4]);
+							}
+							else{
+								totalHours = totalHours + Double.parseDouble(payLines[4]);
+								if(totalHours > 40.00){
+									overtime = true;
+									double partHours = totalHours-40.00;
+									//partHours = Double.parseDouble(payLines[4]) - partHours;
+									double pay = Double.parseDouble(payLines[5])/Double.parseDouble(payLines[4])/2;
+									totalPay = totalPay + pay*partHours;
+								}
+							}
+							totalPay = totalPay + Double.parseDouble(payLines[5]);
+						}
+						//totalPay = payLines[1];
+					}
+				}
+				if(totalPay.isNaN()){
+					totalPay = 0.00;
+				}
+				employeeData.add(new Employee(empLines[0], empLines[1], deptName, rankName, empLines[3], dcf.format(totalPay)));
+				totalPay = 0.00;
+				totalHours = 0.00;
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -88,6 +153,7 @@ public class ManageEmployees {
 			fxml.setController(addEmp);
 			manageEmployeesStage.setScene(new Scene(fxml.load()));
 			manageEmployeesStage.setTitle("Add Employee");
+			manageEmployeesStage.setResizable(false);
 			manageEmployeesStage.show();
 		} catch (UnknownHostException e) {
 			// TODO
@@ -114,6 +180,8 @@ public class ManageEmployees {
 			fxml.setController(manTimes);
 			manageEmpTimesStage.setScene(new Scene(fxml.load()));
 			manageEmpTimesStage.setTitle("Manage Times");
+			manageEmpTimesStage.setResizable(false);
+			manTimes.setId(empList.getSelectionModel().getSelectedItem().getID());
 			manageEmpTimesStage.show();
 		} catch (UnknownHostException e) {
 			// TODO
@@ -122,6 +190,23 @@ public class ManageEmployees {
 			// TODO
 			e.printStackTrace();
 		}
+	}
+	
+	public void retire() throws IOException{
+		Retire retir  = new Retire(manageEmployeesStage);
+		Stage retireStage = new Stage();
+		FXMLLoader fxml = new FXMLLoader(Retire.class.getResource("RetireGui.fxml"));
+		fxml.setController(retir);
+		retireStage.setScene(new Scene(fxml.load()));
+		retireStage.setTitle("Manage Times");
+		retireStage.setResizable(false);
+		retir.getEId(empList.getSelectionModel().getSelectedItem().getID());
+		retireStage.show();
+	}
+	
+	public void enableTimes(){
+		manageTimes.setDisable(false);;
+		retireBtn.setDisable(false);;
 	}
 	
 }

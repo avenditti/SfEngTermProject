@@ -29,6 +29,7 @@ public class ClientGui {
 	@FXML MenuButton managerTools;
 	@FXML Button clockIn;
 	@FXML Button clockOut;
+	@FXML Button logoutBtn;
 	@FXML Label introMessage;
 	@FXML CheckBox callBack;
 	@FXML
@@ -39,8 +40,9 @@ public class ClientGui {
 			reader = new BufferedReader(new FileReader(new File("src/sfproj/client/dataSet/login.txt")));
 			while((line = reader.readLine()) != null){
 				String[] loginLine = ((String) line).split("\\|");
-				if(loginLine[1].equals("2")){
+				if(Integer.parseInt(loginLine[1]) == 2){
 					managerTools.setVisible(true);
+					System.out.println("Manager Login");
 				}
 			}
 		} catch (IOException e) {
@@ -71,6 +73,7 @@ public class ClientGui {
 			fxml.setController(manDepts);
 			ManageDepartments.setScene(new Scene(fxml.load()));
 			ManageDepartments.setTitle("Manage Departments");
+			ManageDepartments.setResizable(false);
 			ManageDepartments.show();
 		} catch (UnknownHostException e) {
 			// TODO
@@ -84,6 +87,8 @@ public class ClientGui {
 	public void manageEmployees(){
 		try {
 			cnh.sendToServer("RequestEmployee");
+			cnh.sendToServer("RequestFullTimes");
+			cnh.sendToServer("RequestRank");
 			try {
 				TimeUnit.SECONDS.sleep(1);
 			} catch (InterruptedException e) {
@@ -96,6 +101,7 @@ public class ClientGui {
 			fxml.setController(manEmps);
 			ManageEmployees.setScene(new Scene(fxml.load()));
 			ManageEmployees.setTitle("Manage Employees");
+			ManageEmployees.setResizable(false);
 			ManageEmployees.show();
 		} catch (UnknownHostException e) {
 			// TODO
@@ -140,6 +146,24 @@ public class ClientGui {
 			String username = reader.readLine();
 			cnh = new ClientNetHandler(serverIPA, port);
 			cnh.sendToServer("ClockOut|"+username+"|"+rank);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void logOut(){
+		try {
+			LoginGui login  = new LoginGui(clientStage);
+			Stage LoginGui = new Stage();
+			FXMLLoader fxml = new FXMLLoader(LoginGui.class.getResource("LoginGui.fxml"));
+			fxml.setController(login);
+			LoginGui.setScene(new Scene(fxml.load()));
+			LoginGui.setTitle("Login");
+			LoginGui.setResizable(false);
+			LoginGui.show();
+			Stage stage = (Stage) logoutBtn.getScene().getWindow();
+			stage.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

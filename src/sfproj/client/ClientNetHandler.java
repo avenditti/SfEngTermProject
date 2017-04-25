@@ -10,6 +10,9 @@ import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.Locale;
 
 import javax.swing.JOptionPane;
 
@@ -47,9 +50,9 @@ public class ClientNetHandler extends AbstractClient{
 			try {
 				writer = new BufferedWriter(new FileWriter(new File("src/sfproj/client/dataSet/employeeList.txt")));
 				for(int i=1; i<message.length-1;){
-					writer.write(message[i] + "|" + message[i+1] + "|" + message[i+2] + "|" + message[i+3]);
-					System.out.println("Wrote: " + message[i] + "|" + message[i+1] + "|" + message[i+2] + "|" + message[i+3]);
-					i = i+4;
+					writer.write(message[i] + "|" + message[i+1] + "|" + message[i+2] + "|" + message[i+3] + "|" + message[i+4]);
+					System.out.println("Wrote: " + message[i] + "|" + message[i+1] + "|" + message[i+2] + "|" + message[i+3] + "|" + message[i+4]);
+					i = i+5;
 					writer.newLine();
 				}
 				writer.flush();
@@ -84,26 +87,145 @@ public class ClientNetHandler extends AbstractClient{
 		else if(message[0].equals("TimeList")){
 			try {
 				DecimalFormat df = new DecimalFormat("#.00");
-				Time in;
-				Time out;
+				Time in, out;
+				Date dateIn, dateOut, clockDate;
 				long timeDiff;
 				double hours;
-				double pay;
+				double pay, totalPay;
+				Double weekHours = 0.00;
+				boolean overtime = false;
 				writer = new BufferedWriter(new FileWriter(new File("src/sfproj/client/dataSet/timeList.txt")));
 				int i=1;
-				if(message[1].equals("IN")){
-					i = 5;
+				if(message[2].equals("IN")){
+					i = 8;
 				}
 				while(i<message.length-1){
-					in = Time.valueOf(message[i+7]);
-					out = Time.valueOf(message[i+2]);
+					DateFormat datef = new SimpleDateFormat("yyyy-MM-dd");
+					Calendar monday = GregorianCalendar.getInstance(Locale.US);
+					Calendar sunday = GregorianCalendar.getInstance(Locale.US);
+					Date mondayD, sundayD, clock;
+					monday.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+					sunday.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+					sunday.add(Calendar.DATE, 6);
+					mondayD = Date.valueOf(datef.format(monday.getTime()).toString());
+					sundayD = Date.valueOf(datef.format(sunday.getTime()).toString());
+					Time nextDate = Time.valueOf("22:30:00");
+					in = Time.valueOf(message[i+9]);
+					dateIn = Date.valueOf(message[i+8]);
+					out = Time.valueOf(message[i+3]);
+					dateOut = Date.valueOf(message[i+2]);
+					clockDate = dateIn;
 					timeDiff = (out.getTime()-in.getTime());
+					if(dateOut.after(dateIn)){
+						Time outMidnight = Time.valueOf("00:00:00");
+						Time inMidnight = Time.valueOf("24:00:00");
+						timeDiff = ((inMidnight.getTime() - in.getTime()) - (outMidnight.getTime() - out.getTime()));//What a bitch
+					}
+					if(in.after(nextDate)){
+						clockDate = dateOut;
+					}
 					hours  = (double)timeDiff/1000/60/60;
-					pay = Double.parseDouble(message[i+3]);
-					System.out.println("Wrote: " + message[i+7] + "|" + message[i+2] + "|" + message[i+6] + "|" + df.format(hours) + "|" + df.format(hours*pay)+ "|" + message[i+9]);
-					writer.write(message[i+7] + "|" + message[i+2] + "|" + message[i+6] + "|" + df.format(hours) + "|" + df.format(hours*pay)+ "|" + message[i+9]);
-					i = i+10;
+					if(hours > 4.0){
+						hours = hours - 0.5;
+					}
+					pay = Double.parseDouble(message[i+4]);
+					clock = Date.valueOf(message[i+8]);
+					if(!mondayD.after(clock) && !sundayD.before(clock)){
+						weekHours = weekHours + hours;
+						if(!message[i+11].equals("Call-Back") && !message[i+11].equals("Regular") && !message[i+11].equals("Holiday")){
+							hours = 0;
+						}
+						if(message[i+11].equals("Call-Back") && hours < 4){
+							totalPay = 4*pay;
+						}
+						else{
+							if(overtime){
+								totalPay = hours*(pay*1.5);
+							}
+							else{
+								if(weekHours > 40.00){
+									overtime = true;
+									double partHours = weekHours-40.00;
+									totalPay = partHours*(pay/2);
+									//double temp = hours-partHours;
+									totalPay = totalPay + hours*pay;
+								}
+								else{
+									totalPay = hours*pay;
+								}
+							}
+						}
+					}
+					else{
+						if(!message[i+11].equals("Call-Back") && !message[i+11].equals("Regular") && !message[i+11].equals("Holiday")){
+							hours = 0;
+						}
+						if(message[i+11].equals("Call-Back") && hours < 4){
+							totalPay = 4*pay;
+						}
+						else{
+							totalPay = hours*pay;
+						}
+					}
+					System.out.println("Wrote: " + message[i] + "-" + message[i+6] + "|" + message[i+9] + "|" + message[i+3] + "|" + clockDate + "|" + df.format(hours) + "|" + df.format(totalPay)+ "|" + message[i+11]);
+					writer.write(message[i] + "-" + message[i+6] + "|" + message[i+9] + "|" + message[i+3] + "|" + clockDate + "|" + df.format(hours) + "|" + df.format(totalPay)+ "|" + message[i+11]);
+					i = i+12;
 					writer.newLine();
+					writer.flush();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		else if(message[0].equals("FullTimeList")){
+			try {
+				DecimalFormat df = new DecimalFormat("0.00");
+				Time in, out;
+				Date dateIn, dateOut, clockDate;
+				long timeDiff;
+				double hours;
+				double pay, totalPay = 0.00;
+				writer = new BufferedWriter(new FileWriter(new File("src/sfproj/client/dataSet/fullTimeList.txt")));
+				int i=1;
+				if(message[1].equals("IN")){
+					i = 7;
+				}
+				while(i<message.length-1){
+					Time nextDate = Time.valueOf("22:30:00");
+					in = Time.valueOf(message[i+9]);
+					dateIn = Date.valueOf(message[i+8]);
+					out = Time.valueOf(message[i+3]);
+					dateOut = Date.valueOf(message[i+2]);
+					clockDate = dateIn;
+					timeDiff = (out.getTime()-in.getTime());
+					if(dateOut.after(dateIn)){
+						Time outMidnight = Time.valueOf("00:00:00");
+						Time inMidnight = Time.valueOf("24:00:00");
+						timeDiff = ((inMidnight.getTime() - in.getTime()) - (outMidnight.getTime() - out.getTime()));
+					}
+					if(in.after(nextDate)){
+						clockDate = dateOut;
+					}
+					hours  = (double)timeDiff/1000/60/60;
+					if(hours > 4.0){
+						hours = hours - 0.5;
+					}
+					pay = Double.parseDouble(message[i+4]);
+					if(!message[i+11].equals("Call-Back") && !message[i+11].equals("Regular") && !message[i+11].equals("Holiday")){
+						hours = 0.00;
+					}
+					if(message[i+11].equals("Call-Back") && hours < 4){
+						totalPay = 4*pay;
+					}
+					else{
+						totalPay = hours*pay;
+					}
+					System.out.println("Wrote: " + message[i+6] + "|" + message[i+9] + "|" + message[i+3] + "|" + message[i+8] + "|" + df.format(hours) + "|" + df.format(totalPay)+ "|" + message[i+11]);
+					writer.write(message[i+6] + "|" + message[i+9] + "|" + message[i+3] + "|" + clockDate + "|" + df.format(hours) + "|" + df.format(totalPay)+ "|" + message[i+11]);
+					i = i+12;
+					writer.newLine();
+					writer.flush();
 				}
 			} catch (IOException e) {
 				// TODO Auto-generated catch block

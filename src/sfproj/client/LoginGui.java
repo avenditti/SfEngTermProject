@@ -26,37 +26,29 @@ public class LoginGui {
 	private final String serverIPA = "localhost";
 	private final int port = 5000;
 	
-	@FXML
-	TextField usernameField;
-	@FXML
-	Button login;
+	@FXML TextField usernameField;
+	@FXML Button login;
 
 	private Stage loginStage;
 
 	public LoginGui(Stage loginStage) {
 		this.loginStage = loginStage;
-
+		try {
+			cnh = new ClientNetHandler(serverIPA, port);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
-	void createHandlers() {
-		login.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				login();
-			}
-
-		});
-	}
-
-	private void login() {
+	public void login() {
 		try {
 			String line;
 			BufferedReader reader;
 			cnh = new ClientNetHandler(serverIPA, port);
 			cnh.sendToServer("Login|" + usernameField.getText());
 			try {
-				TimeUnit.SECONDS.sleep(3);//To set login stuff
+				TimeUnit.SECONDS.sleep(1);//To set login stuff
 				reader = new BufferedReader(new FileReader(new File("src/sfproj/client/dataSet/login.txt")));
 				while((line = reader.readLine()) != null){
 					String[] loginLine = ((String) line).split("\\|");
@@ -69,11 +61,18 @@ public class LoginGui {
 						FXMLLoader fxml = new FXMLLoader(ClientGui.class.getResource("ClientGui.fxml"));
 						fxml.setController(client);
 						clientStage.setScene(new Scene(fxml.load()));
+						clientStage.setResizable(false);
 						clientStage.show();
-						loginStage.close();
+						Stage stage = (Stage) login.getScene().getWindow();
+						stage.close();
 					}
 					else{
-						JOptionPane.showMessageDialog(null, "That user does not exist.", "Login Error " + "Error", JOptionPane.INFORMATION_MESSAGE);
+						if(loginLine[1].equals("3")){
+							JOptionPane.showMessageDialog(null, "You are retired and can no longer clock in.", "Login Error " + "Error", JOptionPane.INFORMATION_MESSAGE);
+						}
+						else{
+							JOptionPane.showMessageDialog(null, "That user does not exist.", "Login Error " + "Error", JOptionPane.INFORMATION_MESSAGE);
+						}
 					}
 				}
 			} catch (InterruptedException e) {

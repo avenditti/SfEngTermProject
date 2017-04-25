@@ -4,10 +4,13 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.UnknownHostException;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
@@ -20,6 +23,11 @@ public class ManageEmployeeTimes {
 	ClientNetHandler cnh;
 	private final String serverIPA = "localhost";
 	private final int port = 5000;
+	private String eId;
+	private String clockDateSet;
+	private String clockInSet;
+	private String clockOutSet;
+	private String clockTypeSet;
 	
 	private ObservableList<timeList> employeeTimes = FXCollections.observableArrayList();
 	
@@ -31,22 +39,17 @@ public class ManageEmployeeTimes {
 	@FXML TableColumn<timeList, String> clockDate;
 	@FXML TableColumn<timeList, String> clockPay;
 	@FXML TableColumn<timeList, String> tHours;
-	@FXML TableColumn<timeList, String> callBack;
+	@FXML TableColumn<timeList, String> clockType;
+	@FXML TableColumn<timeList, String> clockId;
+	@FXML Button editClockBtn;
 	@FXML
 	private void initialize() {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(new File("src/sfproj/client/dataSet/timeList.txt")));
 			String line;
-			String callback = "False";
 			while((line = reader.readLine()) != null){
-				String[] empLines = ((String) line).split("\\|");
-				if(empLines[5].equals("1")){
-					callback = "True";
-				}
-				else{
-					callback = "False";
-				}
-				employeeTimes.add(new timeList(empLines[0], empLines[1], empLines[2], empLines[3], empLines[4], callback));
+				String[] timeLines = ((String) line).split("\\|");
+				employeeTimes.add(new timeList(timeLines[1], timeLines[2], timeLines[3], timeLines[4], timeLines[5], timeLines[6], timeLines[0]));
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -58,7 +61,8 @@ public class ManageEmployeeTimes {
 		clockDate.setCellValueFactory(new PropertyValueFactory<timeList, String>("date"));
 		clockPay.setCellValueFactory(new PropertyValueFactory<timeList, String>("hoursWorked"));
 		tHours.setCellValueFactory(new PropertyValueFactory<timeList, String>("totalPay"));
-		callBack.setCellValueFactory(new PropertyValueFactory<timeList, String>("callBack"));
+		clockType.setCellValueFactory(new PropertyValueFactory<timeList, String>("clockType"));
+		clockId.setCellValueFactory(new PropertyValueFactory<timeList, String>("clockId"));
 		empTimes.setItems(employeeTimes);
 	}
 	
@@ -69,7 +73,57 @@ public class ManageEmployeeTimes {
 	}
 	
 	public void addClock(){
-		
+		try {
+			AddEmployeeTime addEmp  = new AddEmployeeTime(manageEmpTimesStage);
+			Stage addTimeStage = new Stage();
+			FXMLLoader fxml = new FXMLLoader(AddEmployeeTime.class.getResource("AddEmployeeTimeGui.fxml"));
+			fxml.setController(addEmp);
+			addTimeStage.setScene(new Scene(fxml.load()));
+			addTimeStage.setTitle("Add Clock");
+			addTimeStage.setResizable(false);
+			addEmp.setId(eId);
+			addTimeStage.show();
+		} catch (UnknownHostException e) {
+			// TODO
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO
+			e.printStackTrace();
+		}
+	}
+	
+	public void editClock(){
+		try {
+			EditEmployeeClock empClock  = new EditEmployeeClock(manageEmpTimesStage);
+			empClock.setEdit(eId + "-" + empTimes.getSelectionModel().getSelectedItem().getIds(), empTimes.getSelectionModel().getSelectedItem().getDate(), empTimes.getSelectionModel().getSelectedItem().getClockIn(), empTimes.getSelectionModel().getSelectedItem().getClockOut(), empTimes.getSelectionModel().getSelectedItem().getClockType());
+			//System.out.println("Writes" + eId + " | " + empTimes.getSelectionModel().getSelectedItem().getDate() + " | " + empTimes.getSelectionModel().getSelectedItem().getClockIn() + " | " + empTimes.getSelectionModel().getSelectedItem().getClockIn() + " | " + "Type");
+			Stage editEmployeeStage = new Stage();
+			FXMLLoader fxml = new FXMLLoader(EditEmployeeClock.class.getResource("EditEmployeeClockGui.fxml"));
+			fxml.setController(empClock);
+			editEmployeeStage.setScene(new Scene(fxml.load()));
+			editEmployeeStage.setTitle("Edit Clock");
+			editEmployeeStage.setResizable(false);
+			editEmployeeStage.show();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void setId(String id){
+		eId = id;
+	}
+	
+	public void setEdit(String id, String clockDate, String clockIn, String clockOut, String type){
+		eId = id;
+		clockDateSet = clockDate;
+		clockInSet = clockIn;
+		clockOutSet = clockOut;
+		clockTypeSet = type;
+	}
+	
+	public void enableEditClock(){
+		editClockBtn.setDisable(false);;
 	}
 	
 }
